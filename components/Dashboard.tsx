@@ -188,7 +188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
             {/* HOOK: Daily Command Center */}
             <div className="grid md:grid-cols-2 gap-6">
                {/* Hook 1: Nervous System State (Replaces Zen Score) */}
-               <div className={`bg-gradient-to-br ${getNervousSystemColor(metrics.nervousSystem.state)} rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden h-[220px]`}>
+               <div className={`bg-gradient-to-br ${getNervousSystemColor(metrics.nervousSystem.state)} rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden min-h-[220px]`}>
                   <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
                   
                   <div className="flex justify-between items-start z-10">
@@ -199,12 +199,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                     {metrics.nervousSystem.state === 'overdrive' ? <AlertTriangle className="w-6 h-6 text-white animate-pulse" /> : <Zap className="w-6 h-6 text-white" />}
                   </div>
 
-                  <p className="text-sm text-white/90 font-medium max-w-[80%] z-10">
+                  <p className="text-sm text-white/90 font-medium max-w-[80%] z-10 my-4">
                     {metrics.nervousSystem.description}
                   </p>
                   
                   {metrics.contributors.negative.length > 0 && (
-                    <div className="bg-black/20 backdrop-blur-sm rounded-lg p-2 mt-2 z-10">
+                    <div className="bg-black/20 backdrop-blur-sm rounded-lg p-2 z-10 mt-auto">
                       <p className="text-xs text-white/80 flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" /> 
                         Wait: {metrics.contributors.negative[0]}
@@ -221,7 +221,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                </div>
 
                {/* Hook 2: Dynamic Wellness Metrics */}
-               <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between h-[220px]">
+               <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[220px]">
                  <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
                    <Activity className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                    Today's Biometrics
@@ -343,7 +343,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                 </div>
 
                 {/* Charts Section */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
+                <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6">{t('dashboard.chartMood')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
@@ -368,7 +368,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
+                <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6">{t('dashboard.chartWork')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">

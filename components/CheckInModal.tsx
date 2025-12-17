@@ -37,15 +37,15 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ isOpen, onClose, onS
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
-        <div className="bg-teal-600 dark:bg-teal-700 p-4 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
+        <div className="bg-teal-600 dark:bg-teal-700 p-4 flex items-center justify-between shrink-0">
           <h2 className="text-white font-bold text-lg">{t('checkIn.title')}</h2>
           <button onClick={onClose} className="text-teal-100 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
           {/* Mood Slider */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('checkIn.question')}</label>
@@ -103,15 +103,15 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ isOpen, onClose, onS
           {/* Stress Level */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('checkIn.stressLevel')}</label>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => setStressLevel(num)}
-                  className={`flex-1 h-8 rounded text-xs font-bold transition-colors ${
+                  className={`h-10 sm:h-8 rounded-lg sm:rounded text-xs font-bold transition-all transform active:scale-95 ${
                     stressLevel === num 
-                      ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900' 
+                      ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-lg' 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
@@ -119,6 +119,20 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ isOpen, onClose, onS
                 </button>
               ))}
             </div>
+            <div className="flex justify-between text-xs text-slate-400 px-1">
+              <span>Low</span>
+              <span>High</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Notes (Optional)</label>
+             <textarea 
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm h-20 resize-none"
+                placeholder="How are you feeling?"
+             />
           </div>
 
           <Button type="submit" fullWidth>{t('checkIn.submit')}</Button>
