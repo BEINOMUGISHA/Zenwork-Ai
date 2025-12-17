@@ -1,0 +1,7 @@
+{
+  "name": "ZenWork AI",
+  "description": "A corporate wellness tracker for remote teams to monitor burnout and improve well-being using AI insights.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
