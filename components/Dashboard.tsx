@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid 
 } from 'recharts';
-import { Plus, Flame, Activity, Clock, Droplets, Settings, Wind, Trophy, Users, Heart, LayoutDashboard, Book, BrainCircuit, CheckCircle2, Circle, Zap } from 'lucide-react';
+import { Plus, Flame, Activity, Clock, Droplets, Settings, Wind, Trophy, Users, Heart, LayoutDashboard, Book, BrainCircuit, CheckCircle2, Circle, Zap, Battery, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
-import { DailyLog, User, TeamUpdate, Quest } from '../types';
+import { DailyLog, User, TeamUpdate, Quest, WellnessMetrics } from '../types';
 import { CheckInModal } from './CheckInModal';
 import { SettingsModal } from './SettingsModal';
 import { BreathingModal } from './BreathingModal';
@@ -12,6 +12,7 @@ import { AICoach } from './AICoach';
 import { StatCard } from './StatCard';
 import { JournalView } from './JournalView';
 import { useLanguage } from '../contexts/LanguageContext';
+import { calculateWellnessMetrics } from '../utils/scoringEngine';
 
 interface DashboardProps {
   user: User;
@@ -29,24 +30,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
   const [breatheCompleted, setBreatheCompleted] = useState(false);
   const { t } = useLanguage();
 
-  // Calculate Zen Score
-  const calculateZenScore = (): number => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayLog = logs.find(log => log.date.startsWith(todayStr));
-    
-    if (!todayLog) return 0;
-
-    // Weight: Mood 40%, Stress 40%, Water 20%
-    const moodScore = (todayLog.mood / 5) * 40;
-    const stressScore = ((10 - todayLog.stressLevel) / 10) * 40;
-    const waterScore = Math.min((todayLog.waterIntake / user.preferences.waterGoal), 1) * 20;
-
-    return Math.round(moodScore + stressScore + waterScore);
-  };
-
-  const zenScore = calculateZenScore();
   const todayStr = new Date().toISOString().split('T')[0];
   const todayLog = logs.find(log => log.date.startsWith(todayStr));
+
+  // Compute Wellness Metrics
+  const metrics: WellnessMetrics = useMemo(() => {
+    // Filter out today from previous logs to avoid double counting in averages
+    const history = logs.filter(l => !l.date.startsWith(todayStr));
+    return calculateWellnessMetrics(todayLog, history, user.preferences.waterGoal);
+  }, [logs, todayLog, user.preferences.waterGoal, todayStr]);
 
   // Daily Quests Logic
   const quests: Quest[] = [
@@ -107,15 +99,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
 
   const handleBreatheClose = () => {
     setIsBreathingOpen(false);
-    // In real app, check if session actually finished
     setBreatheCompleted(true);
   };
 
   const handleQuestClick = (quest: Quest) => {
     if (quest.completed) return;
     if (quest.type === 'checkin') setIsCheckInOpen(true);
-    if (quest.type === 'water') setIsCheckInOpen(true); // Direct to modify log
+    if (quest.type === 'water') setIsCheckInOpen(true);
     if (quest.type === 'breathe') setIsBreathingOpen(true);
+  };
+
+  const getNervousSystemColor = (state: string) => {
+    switch (state) {
+      case 'flow': return 'from-teal-500 to-emerald-600';
+      case 'activated': return 'from-blue-500 to-indigo-600';
+      case 'overdrive': return 'from-orange-500 to-red-600';
+      case 'recharge': return 'from-slate-500 to-gray-600';
+      default: return 'from-teal-500 to-emerald-600';
+    }
   };
 
   return (
@@ -186,55 +187,116 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
             
             {/* HOOK: Daily Command Center */}
             <div className="grid md:grid-cols-2 gap-6">
-               {/* Hook 1: Zen Score (The Trigger) */}
-               <div className="bg-gradient-to-br from-indigo-600 to-purple-700 dark:from-indigo-900 dark:to-slate-900 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between relative overflow-hidden">
+               {/* Hook 1: Nervous System State (Replaces Zen Score) */}
+               <div className={`bg-gradient-to-br ${getNervousSystemColor(metrics.nervousSystem.state)} rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden h-[220px]`}>
                   <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                  <div>
-                    <h2 className="text-3xl font-bold mb-1">{zenScore}</h2>
-                    <p className="text-indigo-100 text-sm font-medium mb-4">{t('dashboard.zenScore')}</p>
-                    <p className="text-xs text-indigo-200 opacity-80 max-w-[150px]">{t('dashboard.zenScoreDesc')}</p>
+                  
+                  <div className="flex justify-between items-start z-10">
+                    <div>
+                      <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-1">Nervous System State</p>
+                      <h2 className="text-2xl font-bold">{metrics.nervousSystem.label}</h2>
+                    </div>
+                    {metrics.nervousSystem.state === 'overdrive' ? <AlertTriangle className="w-6 h-6 text-white animate-pulse" /> : <Zap className="w-6 h-6 text-white" />}
                   </div>
-                  <div className="relative w-24 h-24 flex items-center justify-center">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <path className="text-indigo-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                      <path className="text-white drop-shadow-lg" strokeDasharray={`${zenScore}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+
+                  <p className="text-sm text-white/90 font-medium max-w-[80%] z-10">
+                    {metrics.nervousSystem.description}
+                  </p>
+                  
+                  {metrics.contributors.negative.length > 0 && (
+                    <div className="bg-black/20 backdrop-blur-sm rounded-lg p-2 mt-2 z-10">
+                      <p className="text-xs text-white/80 flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" /> 
+                        Wait: {metrics.contributors.negative[0]}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Decorative Chart Line */}
+                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-white/10 opacity-30">
+                    <svg className="w-full h-full" viewBox="0 0 100 20" preserveAspectRatio="none">
+                      <path d="M0 15 Q 20 5, 40 10 T 80 15 T 100 10" stroke="white" strokeWidth="2" fill="none" />
                     </svg>
-                    <Zap className="w-8 h-8 absolute text-yellow-300 fill-yellow-300 animate-pulse" />
                   </div>
                </div>
 
-               {/* Hook 2: Daily Quests (The Action) */}
-               <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm">
-                 <div className="flex justify-between items-center mb-4">
-                   <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                     <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                     {t('dashboard.dailyQuests')}
-                   </h3>
-                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{completedQuests}/{quests.length}</span>
-                 </div>
-                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mb-4">
-                   <div className="bg-teal-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
-                 </div>
-                 <div className="space-y-3">
-                   {quests.map(quest => (
-                     <div 
-                       key={quest.id} 
-                       onClick={() => handleQuestClick(quest)}
-                       className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${quest.completed ? 'bg-teal-50 border-teal-100 dark:bg-teal-900/20 dark:border-teal-800' : 'bg-white border-slate-100 hover:border-teal-300 dark:bg-slate-800/50 dark:border-slate-700 dark:hover:border-teal-600'}`}
-                     >
-                       <div className="flex items-center gap-3">
-                         {quest.completed ? (
-                           <div className="bg-teal-500 rounded-full p-0.5"><CheckCircle2 className="w-4 h-4 text-white" /></div>
-                         ) : (
-                           <Circle className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                         )}
-                         <span className={`text-sm font-medium ${quest.completed ? 'text-teal-900 dark:text-teal-100 line-through opacity-70' : 'text-slate-700 dark:text-slate-300'}`}>{quest.title}</span>
-                       </div>
-                       <span className="text-xs font-bold text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-md">+{quest.xpReward} XP</span>
+               {/* Hook 2: Dynamic Wellness Metrics */}
+               <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between h-[220px]">
+                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+                   <Activity className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                   Today's Biometrics
+                 </h3>
+                 
+                 <div className="space-y-4 flex-1 flex flex-col justify-center">
+                   {/* Recovery Score */}
+                   <div>
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-slate-500 dark:text-slate-400 font-medium">Recovery Readiness</span>
+                       <span className={`font-bold ${metrics.recoveryScore > 70 ? 'text-green-600' : 'text-orange-500'}`}>{Math.round(metrics.recoveryScore)}%</span>
                      </div>
-                   ))}
+                     <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                       <div 
+                         className={`h-full rounded-full transition-all duration-1000 ${metrics.recoveryScore > 70 ? 'bg-green-500' : 'bg-orange-500'}`} 
+                         style={{ width: `${metrics.recoveryScore}%` }}
+                       ></div>
+                     </div>
+                   </div>
+
+                   {/* Energy Score */}
+                   <div>
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-slate-500 dark:text-slate-400 font-medium">Energy Level</span>
+                       <span className="font-bold text-blue-600">{Math.round(metrics.energyScore)}%</span>
+                     </div>
+                     <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                       <div 
+                         className="h-full bg-blue-500 rounded-full transition-all duration-1000" 
+                         style={{ width: `${metrics.energyScore}%` }}
+                       ></div>
+                     </div>
+                   </div>
+
+                   {/* Stress Score (Inverted Visual: High stress bar is bad) */}
+                   <div>
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-slate-500 dark:text-slate-400 font-medium">Stress Load</span>
+                       <span className={`font-bold ${metrics.stressScore > 60 ? 'text-red-500' : 'text-teal-600'}`}>{Math.round(metrics.stressScore)}</span>
+                     </div>
+                     <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                       <div 
+                         className={`h-full rounded-full transition-all duration-1000 ${metrics.stressScore > 60 ? 'bg-red-500' : 'bg-teal-500'}`} 
+                         style={{ width: `${metrics.stressScore}%` }}
+                       ></div>
+                     </div>
+                   </div>
                  </div>
                </div>
+            </div>
+
+            {/* Daily Quests Strip */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4 overflow-x-auto">
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="bg-teal-100 dark:bg-teal-900/40 p-2 rounded-lg">
+                    <Trophy className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-white">Daily Quests</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{completedQuests}/{quests.length} Completed</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 flex-1 justify-end">
+                   {quests.map(quest => (
+                     <button 
+                       key={quest.id}
+                       onClick={() => handleQuestClick(quest)}
+                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all whitespace-nowrap ${quest.completed ? 'bg-teal-50 border-teal-200 text-teal-700 dark:bg-teal-900/20 dark:border-teal-800 dark:text-teal-400' : 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}`}
+                     >
+                       {quest.completed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                       {quest.title}
+                     </button>
+                   ))}
+                </div>
             </div>
 
             {/* Quick Stats Grid */}

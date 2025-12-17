@@ -85,3 +85,20 @@ export interface Quest {
   xpReward: number;
   type: 'checkin' | 'water' | 'breathe';
 }
+
+export type NervousSystemState = 'flow' | 'activated' | 'overdrive' | 'recharge';
+
+export interface WellnessMetrics {
+  stressScore: number; // 0-100 (Lower is better)
+  energyScore: number; // 0-100 (Higher is better)
+  recoveryScore: number; // 0-100 (Higher is better)
+  nervousSystem: {
+    state: NervousSystemState;
+    label: string;
+    description: string;
+  };
+  contributors: {
+    positive: string[];
+    negative: string[];
+  };
+}
