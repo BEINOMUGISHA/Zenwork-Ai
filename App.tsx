@@ -1,142 +1,111 @@
 import React, { useState, useEffect } from 'react';
 import { Landing } from './components/Landing';
 import { Dashboard } from './components/Dashboard';
-import { User, DailyLog, LanguageCode } from './types';
+import { DailyLog } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { OfflineBanner } from './components/OfflineBanner';
+import { storageService } from './services/storageService';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { Loader2 } from 'lucide-react';
 
-// Mock Data Generator
-const generateMockLogs = (): DailyLog[] => {
-  const logs: DailyLog[] = [];
-  const today = new Date();
-  
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    logs.push({
-      id: `log-${i}`,
-      date: d.toISOString(),
-      mood: Math.floor(Math.random() * 3) + 3, // 3-5 range mostly
-      stressLevel: Math.floor(Math.random() * 5) + 2, // 2-7 range
-      hoursWorked: Math.floor(Math.random() * 4) + 6, // 6-10 hours
-      waterIntake: Math.floor(Math.random() * 5) + 3,
-      notes: "Feeling okay."
-    });
-  }
-  return logs;
-};
-
-// Inner App Component to use the hook
+// Inner App Component to use the auth hook
 const ZenWorkApp: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isAuthenticated, login, logout, updateUser, isLoading: authLoading } = useAuth();
   const [logs, setLogs] = useState<DailyLog[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
   const { setLanguage } = useLanguage();
+  const isOnline = useOnlineStatus();
 
-  // Initialize mock data on load
-  useEffect(() => {
-    setLogs(generateMockLogs());
-  }, []);
-
-  // Sync language and theme when user loads or updates
+  // Sync language and theme
   useEffect(() => {
     if (user) {
       if (user.preferences.language) {
         setLanguage(user.preferences.language);
       }
-      
       if (user.preferences.theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
     } else {
-      // Default to light if no user
       document.documentElement.classList.remove('dark');
     }
   }, [user, setLanguage]);
 
-  const handleLogin = () => {
-    // Simulate Auth
-    setUser({
-      id: 'u1',
-      name: 'Sarah Jenkins',
-      role: 'Remote Software Engineer',
-      email: 'sarah@example.com',
-      avatar: 'https://picsum.photos/200',
-      level: {
-        currentLevel: 3,
-        currentXp: 350,
-        nextLevelXp: 500,
-        title: 'Zen Seeker'
-      },
-      preferences: {
-        wellnessGoal: 'work_life_balance',
-        waterGoal: 8,
-        language: 'en',
-        theme: 'light',
-        notifications: {
-          email: true,
-          push: true,
-          dailyReminder: true
-        },
-        integrations: {
-          appleHealth: false,
-          googleFit: true,
-          slack: false
+  // Fetch Logs when user changes or comes online
+  useEffect(() => {
+    const fetchLogs = async () => {
+      if (user) {
+        setDataLoading(true);
+        try {
+          // Attempt sync if online
+          if (isOnline) {
+             await storageService.syncPending(user.id);
+          }
+          const data = await storageService.getLogs(user.id);
+          setLogs(data);
+        } catch (error) {
+          console.error("Failed to fetch logs", error);
+        } finally {
+          setDataLoading(false);
         }
-      },
-      achievements: [
-        { id: '1', title: 'First Steps', description: 'Logged first check-in', icon: '🚀', unlocked: true },
-        { id: '2', title: 'Hydration Hero', description: 'Hit water goal 3 days in a row', icon: '💧', unlocked: true },
-        { id: '3', title: 'Zen Master', description: 'Maintained low stress for a week', icon: '🧘', unlocked: false }
-      ]
-    });
-    setIsAuthenticated(true);
-  };
+      }
+    };
+    fetchLogs();
+  }, [user, isOnline]);
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    setLanguage('en'); // Reset to default on logout
-    document.documentElement.classList.remove('dark');
-  };
-
-  const handleUpdateUser = (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      // Immediate language sync handled in effect
-    }
-  };
-
-  const handleAddLog = (newLogData: Omit<DailyLog, 'id'>) => {
+  const handleAddLog = async (newLogData: Omit<DailyLog, 'id'>) => {
+    if (!user) return;
+    
     const newLog: DailyLog = {
       ...newLogData,
-      id: `log-${Date.now()}`
+      id: `log-${Date.now()}` // Temporary ID, real DB would generate UUID
     };
-    setLogs(prev => [...prev, newLog]);
+    
+    // Optimistic Update
+    setLogs(prev => [newLog, ...prev]); // Add to top
+    
+    // Persist
+    await storageService.saveLog(newLog, user.id);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !user) {
-    return <Landing onLogin={handleLogin} />;
+    return <Landing onLogin={login} />;
   }
 
   return (
-    <Dashboard 
-      user={user} 
-      logs={logs} 
-      onAddLog={handleAddLog} 
-      onLogout={handleLogout}
-      onUpdateUser={handleUpdateUser}
-    />
+    <>
+      <Dashboard 
+        user={user} 
+        logs={logs} 
+        onAddLog={handleAddLog} 
+        onLogout={logout}
+        onUpdateUser={updateUser}
+      />
+      <OfflineBanner />
+    </>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <LanguageProvider>
-      <ZenWorkApp />
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <AuthProvider>
+          <ZenWorkApp />
+        </AuthProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 };
 

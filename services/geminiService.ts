@@ -1,10 +1,17 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { DailyLog, AIInsight } from "../types";
+import { DailyLog, AIInsight, WellnessMetrics } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const getWellnessInsight = async (logs: DailyLog[], userName: string, userRole: string, userGoal: string, language: string = 'en'): Promise<AIInsight> => {
-  const recentLogs = logs.slice(-7); // Analyze last 7 logs
+export const getWellnessInsight = async (
+  logs: DailyLog[], 
+  userName: string, 
+  userRole: string, 
+  userGoal: string, 
+  metrics: WellnessMetrics,
+  language: string = 'en'
+): Promise<AIInsight> => {
+  const recentLogs = logs.slice(-5); // Last 5 days context
   
   const languageNames: Record<string, string> = {
     en: 'English',
@@ -15,49 +22,54 @@ export const getWellnessInsight = async (logs: DailyLog[], userName: string, use
 
   const targetLang = languageNames[language] || 'English';
 
-  // Determine specific context based on role keywords
-  let roleContext = "General remote work challenges: boundary setting, sedentary lifestyle, and digital disconnection.";
-  const roleLower = (userRole || '').toLowerCase();
-  
-  if (roleLower.includes('developer') || roleLower.includes('engineer') || roleLower.includes('coder') || roleLower.includes('programmer')) {
-    roleContext = "Developer challenges: Eye strain, deep work interruption, isolation, cognitive fatigue from debugging, and 'crunch mode'.";
-  } else if (roleLower.includes('manager') || roleLower.includes('lead') || roleLower.includes('executive') || roleLower.includes('director') || roleLower.includes('head')) {
-    roleContext = "Leadership challenges: Decision fatigue, meeting overload ('Zoom fatigue'), emotional labor of supporting others, and lack of focus time.";
-  } else if (roleLower.includes('designer') || roleLower.includes('creative') || roleLower.includes('artist') || roleLower.includes('writer')) {
-    roleContext = "Creative challenges: Creative block, feedback fatigue, perfectionism, and imposter syndrome.";
-  } else if (roleLower.includes('sales') || roleLower.includes('marketing') || roleLower.includes('account')) {
-    roleContext = "Growth role challenges: High pressure targets, social battery drain, performance anxiety, and rejection resilience.";
-  } else if (roleLower.includes('support') || roleLower.includes('service') || roleLower.includes('success')) {
-    roleContext = "Support role challenges: Empathy fatigue, repetitive tasks, high reactivity requirement, and difficult customer interactions.";
-  }
-
   const prompt = `
-    You are ZenBot, an elite corporate wellness and performance coach for remote professionals.
+    You are ZenBot, an intelligent wellness engine for remote professionals.
     
-    TARGET USER PROFILE:
+    USER CONTEXT:
     - Name: ${userName}
-    - Professional Role: ${userRole || 'Remote Professional'}
-    - Specific Role Context to consider: ${roleContext}
-    - PRIMARY WELLNESS GOAL: ${userGoal.replace(/_/g, ' ').toUpperCase()} (Critical: Align all advice to this goal)
+    - Role: ${userRole}
+    - Primary Goal: ${userGoal.replace(/_/g, ' ')}
     
-    RECENT ACTIVITY DATA (Last 7 days):
-    ${JSON.stringify(recentLogs, null, 2)}
+    CURRENT BIOMETRIC STATE (Calculated):
+    - Nervous System State: ${metrics.nervousSystem.label} (${metrics.nervousSystem.description})
+    - Stress Score: ${metrics.stressScore}/100 (Lower is better)
+    - Energy Score: ${metrics.energyScore}/100 (Higher is better)
+    - Recovery Readiness: ${metrics.recoveryScore}/100
     
-    ANALYSIS INSTRUCTIONS:
-    1. Analyze trends in Work Hours, Stress Levels (1-10), and Mood (1-5).
-    2. Identify specific correlations (e.g., "High stress on days with >9 hours work").
-    3. Tailor the advice specifically to their role AND their primary wellness goal.
+    KEY FACTORS (Contributors):
+    - Positive: ${metrics.contributors.positive.join(', ') || 'None identified'}
+    - Negative: ${metrics.contributors.negative.join(', ') || 'None identified'}
     
-    OUTPUT REQUIREMENTS (Strict JSON):
-    - title: A punchy, 3-6 word headline summarizing their current state. Use role-relevant terminology if possible (e.g., "Codebase Fatigue Detected" for devs, "Meeting Overload" for managers).
-    - content: A 2-3 sentence analysis speaking directly to them using "You". Explicitly reference patterns in their data and connect it to their role challenges and stated goal.
-    - actionableStep: One specific, high-impact micro-habit to do TODAY (max 15 words). It must be relevant to their role.
-      * Bad examples: "Drink water", "Sleep more", "Relax".
-      * Good examples: "Decline the next non-urgent meeting", "Enable 'Do Not Disturb' for 1 hour", "Do the 20-20-20 eye rule".
+    RECENT ACTIVITY LOGS:
+    ${JSON.stringify(recentLogs.map(l => ({ date: l.date, mood: l.mood, stress: l.stressLevel, hours: l.hoursWorked })), null, 2)}
     
-    IMPORTANT: Respond in ${targetLang}.
+    TASK:
+    Generate a daily briefing JSON.
     
-    Do not include markdown code blocks. Just the raw JSON string.
+    GUIDELINES:
+    1. **Tone Adaptation**: 
+       - If State is 'Overdrive' or Stress > 70: Use an **empathetic, calming** tone.
+       - If State is 'Flow' or Energy > 70: Use an **energetic, encouraging** tone.
+       - Otherwise: Use an **analytical, helpful** tone.
+    
+    2. **"Why do I feel this way?" (Analysis)**:
+       - Do NOT diagnose.
+       - Use the "Contributors" and "Logs" to explain the score.
+       - Example: "Your high stress score stems from working 2 hours over your average yesterday combined with low hydration."
+    
+    3. **Actionable Step**:
+       - Must be a micro-habit (<5 mins).
+       - specific to their Goal and State.
+    
+    OUTPUT FORMAT (Strict JSON):
+    {
+      "summary": "A 1-sentence high-level summary of their current status.",
+      "analysis": "2-3 sentences explaining the 'Why' based on the metrics/contributors provided.",
+      "actionableStep": "One specific action to take right now.",
+      "tone": "empathetic" | "energetic" | "analytical" | "calm"
+    }
+    
+    IMPORTANT: Respond in ${targetLang}. Only return valid JSON.
   `;
 
   try {
@@ -70,16 +82,16 @@ export const getWellnessInsight = async (logs: DailyLog[], userName: string, use
     });
 
     const text = response.text || "{}";
-    // Clean up if model adds markdown blocks by accident
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     return JSON.parse(cleanJson) as AIInsight;
   } catch (error) {
     console.error("Error generating insight:", error);
     return {
-      title: "Connection Issue",
-      content: "We couldn't reach the AI coach right now. Please try again later.",
-      actionableStep: "Take a deep breath and relax."
+      summary: "Unable to generate briefing.",
+      analysis: "We couldn't connect to the insight engine at this moment.",
+      actionableStep: "Take a deep breath.",
+      tone: "calm"
     };
   }
 };

@@ -65,9 +65,10 @@ export interface User {
 }
 
 export interface AIInsight {
-  title: string;
-  content: string;
+  summary: string; // "Daily wellness summary"
+  analysis: string; // "Why do I feel this way?"
   actionableStep: string;
+  tone: 'empathetic' | 'energetic' | 'analytical' | 'calm';
 }
 
 export interface TeamUpdate {

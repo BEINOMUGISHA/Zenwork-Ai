@@ -299,47 +299,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                 </div>
             </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard 
-                icon={<Flame className="w-5 h-5 text-orange-500" />}
-                iconBgColor="bg-orange-100 dark:bg-orange-900/40"
-                value={`${streak} ${t('common.days')}`}
-                label={t('dashboard.streak')}
-              />
-              
-              <StatCard 
-                icon={<Activity className="w-5 h-5 text-teal-600 dark:text-teal-400" />}
-                iconBgColor="bg-teal-100 dark:bg-teal-900/40"
-                value={`${avgMood}/5`}
-                label={t('dashboard.avgMood')}
-              />
-              
-              <StatCard 
-                icon={<Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
-                iconBgColor="bg-blue-100 dark:bg-blue-900/40"
-                value={`${avgWork}h`}
-                label={t('dashboard.avgWork')}
-              />
-
-              <StatCard 
-                icon={<Droplets className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
-                iconBgColor="bg-cyan-100 dark:bg-cyan-900/40"
-                value={`${todayWater} / ${waterGoal}`}
-                label={t('dashboard.hydration')}
-              />
-            </div>
-
             <div className="grid md:grid-cols-3 gap-6">
               {/* Main Content - Left 2/3 */}
               <div className="md:col-span-2 space-y-6">
-                {/* AI Section (Mini) */}
+                {/* AI Section (Daily Briefing) */}
                 <AICoach 
                   logs={logs} 
+                  metrics={metrics}
                   userName={user.name} 
                   userRole={user.role} 
                   userGoal={user.preferences.wellnessGoal || 'work_life_balance'}
                 />
+
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatCard 
+                    icon={<Flame className="w-5 h-5 text-orange-500" />}
+                    iconBgColor="bg-orange-100 dark:bg-orange-900/40"
+                    value={`${streak} ${t('common.days')}`}
+                    label={t('dashboard.streak')}
+                  />
+                  
+                  <StatCard 
+                    icon={<Activity className="w-5 h-5 text-teal-600 dark:text-teal-400" />}
+                    iconBgColor="bg-teal-100 dark:bg-teal-900/40"
+                    value={`${avgMood}/5`}
+                    label={t('dashboard.avgMood')}
+                  />
+                  
+                  <StatCard 
+                    icon={<Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+                    iconBgColor="bg-blue-100 dark:bg-blue-900/40"
+                    value={`${avgWork}h`}
+                    label={t('dashboard.avgWork')}
+                  />
+
+                  <StatCard 
+                    icon={<Droplets className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />}
+                    iconBgColor="bg-cyan-100 dark:bg-cyan-900/40"
+                    value={`${todayWater} / ${waterGoal}`}
+                    label={t('dashboard.hydration')}
+                  />
+                </div>
 
                 {/* Charts Section */}
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
@@ -457,6 +458,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, logs, onAddLog, onLo
                 </p>
                 <AICoach 
                   logs={logs} 
+                  metrics={metrics}
                   userName={user.name} 
                   userRole={user.role} 
                   userGoal={user.preferences.wellnessGoal || 'work_life_balance'}
